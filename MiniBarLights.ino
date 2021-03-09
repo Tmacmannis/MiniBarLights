@@ -7,8 +7,8 @@ EspMQTTClient client(
     myPASSWORD,
     mqttIP,      // MQTT Broker server ip
     "tim",       // Can be omitted if not needed
-    "miniBar",   // Can be omitted if not needed
-    haPASSWORD,  // Client name that uniquely identify your device
+    "14Q4YsC6YrXl",   // Can be omitted if not needed
+    "MiniBar",  // Client name that uniquely identify your device
     haPORT       // The MQTT port, default to 1883. this line can be omitted
 );
 
