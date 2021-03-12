@@ -10,14 +10,14 @@
 
 #define LED_TYPE WS2812B
 #define COLOR_ORDER GRB
-#define NUM_LEDS 15
+#define NUM_LEDS 20
 
 CRGB leds1[NUM_LEDS];
 CRGB leds2[NUM_LEDS];
 CRGB leds3[NUM_LEDS];
 CRGB leds4[NUM_LEDS];
 
-#define BRIGHTNESS 200
+int brightness = 200;
 
 EspMQTTClient client(
     mySSID,
@@ -38,7 +38,7 @@ void setup() {
     client.enableDebuggingMessages();                                           // Enable debugging messages sent to serial output
     client.enableHTTPWebUpdater();                                              // Enable the web updater. User and password default to values of MQTTUsername and MQTTPassword. These can be overrited with enableHTTPWebUpdater("user", "password").
     client.enableLastWillMessage("TestClient/lastwill", "I am going offline");  // You can activate the retain flag by setting the third parameter to true
-    client.enableDebuggingMessages(false);
+    client.enableDebuggingMessages(true);
 
     xTaskCreatePinnedToCore(
         Task1code, /* Task function. */
@@ -55,11 +55,21 @@ void setup() {
     FastLED.addLeds<LED_TYPE, DATA_PIN3, COLOR_ORDER>(leds3, NUM_LEDS).setCorrection(TypicalLEDStrip);
     FastLED.addLeds<LED_TYPE, DATA_PIN4, COLOR_ORDER>(leds4, NUM_LEDS).setCorrection(TypicalLEDStrip);
 
-    FastLED.setBrightness(BRIGHTNESS);
+    FastLED.setBrightness(brightness);
 }
 
 void loop() {
     handleClientTest();
+
+    for(int i=0; i< 20; i++){
+        leds1[i] = CRGB::White;
+        leds2[i] = CRGB::White;
+        leds3[i] = CRGB::White;
+        leds4[i] = CRGB::White;
+    }
+    FastLED.show();
+    delay(1000);
+
 }
 
 void Task1code(void* pvParameters) {
@@ -68,19 +78,13 @@ void Task1code(void* pvParameters) {
 
     for (;;) {
         delay(28);
-        //ArduinoOTA.handle();
-        // server.handleClient();
-        // handleClientTest();
         client.loop();  // takes 60 micro seconds to complete, fast...
     }
 }
 
 void onConnectionEstablished() {
-    // Subscribe to "mytopic/test" and display received message to Serial
-    client.subscribe("minibarlights/test", [](const String& payload) {
+    client.subscribe("minibarlights/brightness", [](const String& payload) {
         TelnetStream.print("payload is: ");
         TelnetStream.println(payload);
-        TelnetStream.print("sub task running on core ");
-        TelnetStream.println(xPortGetCoreID());
     });
 }
