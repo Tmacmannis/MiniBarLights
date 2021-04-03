@@ -67,6 +67,23 @@ void onConnectionEstablished() {
         TelnetStream.println(payload);
         setAnimation(payload);
     });
+
+    client.subscribe("minibarlights/speed_slider", [](const String& payload) {
+        TelnetStream.print("speed payload is: ");
+        TelnetStream.println(payload);
+        masterSpeed = payload.toInt();
+    });
+
+    client.subscribe("minibarlights/static_color", [](const String& payload) {
+        TelnetStream.print("static color payload is: ");
+        TelnetStream.println(payload);
+        if(payload == "on"){
+            staticColor = true;
+        } else{
+            staticColor = false;
+        }
+        // masterSpeed = payload.toInt();
+    });
 }
 
 String getValue(String data, char separator, int index) {

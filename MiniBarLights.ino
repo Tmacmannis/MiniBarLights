@@ -23,6 +23,8 @@ int prevBrightness = 0;
 int brightness = 25;
 unsigned long mqttUpdateTime = 0;
 int currentState;
+int masterSpeed = 50;
+boolean staticColor = true;
 
 uint8_t changingHue = 0;
 
@@ -31,6 +33,8 @@ boolean colorTranslated = false;
 int red;
 int green;
 int blue;
+
+int testCount;
 
 EspMQTTClient client(
     mySSID,
@@ -72,12 +76,12 @@ void setup() {
 }
 
 void loop() {
-    //handleClientTest();
+    handleClientTest();
 
-//    EVERY_N_MILLISECONDS(16) {
+    EVERY_N_MILLISECONDS(8) {
         ledStateMachine();
-        FastLED.show();
-    // }
+    }
+    FastLED.show();
 }
 
 void ledStateMachine() {
@@ -97,22 +101,36 @@ void ledStateMachine() {
                 rightGlassLeds[i] = CHSV(changingHue, 255, brightness);
                 leftGlassLeds[i] = CHSV(changingHue, 255, brightness);
             }
-            EVERY_N_MILLISECONDS(500){
+            EVERY_N_MILLISECONDS(500) {
                 changingHue++;
             }
             break;
-        case 2: //Test Pattern
+        case 2:  //Test Pattern
 
-            for (int i = 0; i < 15; i++) {
-                wineLeds[i].setRGB(red, green, blue);
-                fadeToBlackBy(wineLeds, NUM_LEDS, 30);
-                FastLED.show();
-                FastLED.delay(250);
+            EVERY_N_MILLISECONDS_I(timingObj, 200) {
+                if (staticColor) {
+                    wineLeds[testCount].setRGB(red, green, blue);
+                } else{
+                    wineLeds[testCount] = CHSV(changingHue, 255, brightness);
+                }
+
+                testCount++;
+                timingObj.setPeriod(map(masterSpeed, 0, 100, 500, 50));
+            }
+
+            EVERY_N_MILLISECONDS(16) {
+                fadeToBlackBy(wineLeds, NUM_LEDS, map(masterSpeed, 0, 100, 5, 30));
+            }
+
+            if (testCount > 14) {
+                testCount = 0;
+                if(!staticColor){
+                     changingHue = random8();
+                }
             }
             break;
     }
 }
-
 
 void setAnimation(String payload) {
     if (payload == "Solid White") {
@@ -137,4 +155,3 @@ void setAnimation(String payload) {
         currentState = 5;
     }
 }
-
