@@ -17,17 +17,24 @@ void Task1code(void* pvParameters) {
             } else {
                 client.publish("minibarlights/OnOffState", "OFF");
             }
+
+            //upper and lower brightness
+            client.publish("minibarlights/set_lower_brightness", String(lowerBrightness));
+            client.publish("minibarlights/set_upper_brightness", String(upperBrightness));
+
+            //current effect state
+            client.publish("minibarlights/effectState", getCurrentEffectState());
         }
     }
 }
-
 
 void onConnectionEstablished() {
     client.subscribe("minibarlights/brightness", [](const String& payload) {
         TelnetStream.print("brightness payload is: ");
         TelnetStream.println(payload);
         brightness = map(payload.toInt(), 3, 255, 0, 255);
-        FastLED.setBrightness(brightness);
+        lowerBrightness = brightness;
+        upperBrightness = brightness;
     });
 
     client.subscribe("minibarlights/OnOff", [](const String& payload) {
@@ -35,16 +42,18 @@ void onConnectionEstablished() {
         TelnetStream.println(payload);
         if (payload == "OFF") {
             if (lightsOn) {
-                prevBrightness = brightness;
+                prevLowerBrightness = lowerBrightness;
+                prevUpperBrightness = upperBrightness;
                 brightness = 0;
                 lightsOn = false;
-                FastLED.setBrightness(0);
+                lowerBrightness = 0;
+                upperBrightness = 0;
             }
         } else {
             if (!lightsOn) {
-                brightness = prevBrightness;
                 lightsOn = true;
-                FastLED.setBrightness(brightness);
+                lowerBrightness = prevLowerBrightness;
+                upperBrightness = prevUpperBrightness;
             }
         }
     });
@@ -77,12 +86,23 @@ void onConnectionEstablished() {
     client.subscribe("minibarlights/static_color", [](const String& payload) {
         TelnetStream.print("static color payload is: ");
         TelnetStream.println(payload);
-        if(payload == "on"){
+        if (payload == "on") {
             staticColor = true;
-        } else{
+        } else {
             staticColor = false;
         }
-        // masterSpeed = payload.toInt();
+    });
+
+    client.subscribe("minibarlights/upper_brightness", [](const String& payload) {
+        TelnetStream.print("upper brightness payload is: ");
+        TelnetStream.println(payload);
+        upperBrightness = payload.toInt();
+    });
+
+    client.subscribe("minibarlights/lower_brightness", [](const String& payload) {
+        TelnetStream.print("lower brightness payload is: ");
+        TelnetStream.println(payload);
+        lowerBrightness = payload.toInt();
     });
 }
 

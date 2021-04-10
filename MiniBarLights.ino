@@ -19,8 +19,11 @@ CRGB rightGlassLeds[NUM_LEDS];
 CRGB leftGlassLeds[NUM_LEDS];
 
 boolean lightsOn = true;
-int prevBrightness = 0;
+int prevUpperBrightness = 0;
+int prevLowerBrightness = 0;
 int brightness = 25;
+int upperBrightness = 100;
+int lowerBrightness = 100;
 unsigned long mqttUpdateTime = 0;
 int currentState;
 int masterSpeed = 50;
@@ -72,7 +75,7 @@ void setup() {
     FastLED.addLeds<LED_TYPE, DATA_PIN3, COLOR_ORDER>(rightGlassLeds, NUM_LEDS).setCorrection(TypicalLEDStrip);
     FastLED.addLeds<LED_TYPE, DATA_PIN4, COLOR_ORDER>(leftGlassLeds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 
-    FastLED.setBrightness(brightness);
+    FastLED.setBrightness(255);
 }
 
 void loop() {
@@ -87,19 +90,14 @@ void loop() {
 void ledStateMachine() {
     switch (currentState) {
         case 0:  //solid white
-            for (int i = 0; i < 20; i++) {
-                wineLeds[i].setRGB(red, green, blue);
-                compartmentLeds[i].setRGB(red, green, blue);
-                rightGlassLeds[i].setRGB(red, green, blue);
-                leftGlassLeds[i].setRGB(red, green, blue);
-            }
+            solidColors(false);
             break;
         case 1:  //Slow Change
             for (int i = 0; i < 20; i++) {
-                wineLeds[i] = CHSV(changingHue, 255, brightness);
-                compartmentLeds[i] = CHSV(changingHue, 255, brightness);
-                rightGlassLeds[i] = CHSV(changingHue, 255, brightness);
-                leftGlassLeds[i] = CHSV(changingHue, 255, brightness);
+                wineLeds[i] = CHSV(changingHue, 255, lowerBrightness);
+                compartmentLeds[i] = CHSV(changingHue, 255, upperBrightness);
+                rightGlassLeds[i] = CHSV(changingHue, 255, upperBrightness);
+                leftGlassLeds[i] = CHSV(changingHue, 255, upperBrightness);
             }
             EVERY_N_MILLISECONDS(500) {
                 changingHue++;
@@ -109,25 +107,30 @@ void ledStateMachine() {
 
             EVERY_N_MILLISECONDS_I(timingObj, 200) {
                 if (staticColor) {
-                    wineLeds[testCount].setRGB(red, green, blue);
-                } else{
-                    wineLeds[testCount] = CHSV(changingHue, 255, brightness);
+                    CHSV temp1 = hsv2rgb();
+                    temp1.value = lowerBrightness;
+                    wineLeds[testCount] = temp1;
+                } else {
+                    wineLeds[testCount] = CHSV(changingHue, 255, lowerBrightness);
                 }
 
                 testCount++;
-                timingObj.setPeriod(map(masterSpeed, 0, 100, 500, 50));
+                timingObj.setPeriod(map(masterSpeed, 0, 100, 1000, 50));
             }
 
             EVERY_N_MILLISECONDS(16) {
-                fadeToBlackBy(wineLeds, NUM_LEDS, map(masterSpeed, 0, 100, 5, 30));
+                fadeToBlackBy(wineLeds, NUM_LEDS, map(masterSpeed, 0, 100, 2, 30));
             }
 
             if (testCount > 14) {
                 testCount = 0;
-                if(!staticColor){
-                     changingHue = random8();
+                if (!staticColor) {
+                    changingHue = random8();
                 }
             }
+
+            solidColors(true);
+
             break;
     }
 }
@@ -153,5 +156,45 @@ void setAnimation(String payload) {
     }
     if (payload == "Rainbow") {
         currentState = 5;
+    }
+}
+
+String getCurrentEffectState() {
+    switch (currentState) {
+        case 0:
+            return "Solid White";
+        case 1:
+            return "Slow Change";
+        case 2:
+            return "Scanning";
+        case 3:
+            return "Breathing Multi Color";
+        case 4:
+            return "Scanner";
+        case 5:
+            return "Rainbow";
+    }
+}
+
+CHSV rgb2hsv() {
+    CRGB color1temp;
+    color1temp.r = red;
+    color1temp.g = green;
+    color1temp.b = blue;
+    CHSV temp1 = rgb2hsv_approximate(color1temp);
+    return temp1;
+}
+
+void solidColors(boolean upperOnly) {
+    for (int i = 0; i < 20; i++) {
+        CHSV temp1 = hsv2rgb();
+        temp1.value = upperBrightness;
+        compartmentLeds[i] = temp1;
+        rightGlassLeds[i] = temp1;
+        leftGlassLeds[i] = temp1;
+        if (!upperOnly) {
+            temp1.value = lowerBrightness;
+            wineLeds[i] = temp1;
+        }
     }
 }
