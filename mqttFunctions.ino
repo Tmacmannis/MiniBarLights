@@ -104,6 +104,15 @@ void onConnectionEstablished() {
         TelnetStream.println(payload);
         lowerBrightness = payload.toInt();
     });
+
+    client.subscribe("minibarlights/powerOnAutomation", [](const String& payload) {
+        TelnetStream.print("power on called");
+        TelnetStream.println(payload);
+        lightsOn = true;
+        lowerBrightness = 50;
+        upperBrightness = 50;
+        setAnimation("Solid White");
+    });
 }
 
 String getValue(String data, char separator, int index) {
