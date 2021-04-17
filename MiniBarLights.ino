@@ -93,45 +93,13 @@ void ledStateMachine() {
             solidColors(false);
             break;
         case 1:  //Slow Change
-            for (int i = 0; i < 20; i++) {
-                wineLeds[i] = CHSV(changingHue, 255, lowerBrightness);
-                compartmentLeds[i] = CHSV(changingHue, 255, upperBrightness);
-                rightGlassLeds[i] = CHSV(changingHue, 255, upperBrightness);
-                leftGlassLeds[i] = CHSV(changingHue, 255, upperBrightness);
-            }
-            EVERY_N_MILLISECONDS(500) {
-                changingHue++;
-            }
+            slowChange();
             break;
         case 2:  //Test Pattern
-
-            EVERY_N_MILLISECONDS_I(timingObj, 200) {
-                if (staticColor) {
-                    CHSV temp1 = hsv2rgb();
-                    temp1.value = lowerBrightness;
-                    wineLeds[testCount] = temp1;
-                } else {
-                    wineLeds[testCount] = CHSV(changingHue, 255, lowerBrightness);
-                }
-
-                testCount++;
-                timingObj.setPeriod(map(masterSpeed, 0, 100, 1000, 50));
-            }
-
-            EVERY_N_MILLISECONDS(16) {
-                fadeToBlackBy(wineLeds, NUM_LEDS, map(masterSpeed, 0, 100, 2, 30));
-            }
-
-            if (testCount > 14) {
-                testCount = 0;
-                if (!staticColor) {
-                    changingHue = random8();
-                }
-            }
-
-            solidColors(true);
-
+            singleScanning();
             break;
+        case 3:
+            multiScanning();
     }
 }
 
@@ -198,3 +166,46 @@ void solidColors(boolean upperOnly) {
         }
     }
 }
+
+void slowChange() {
+    for (int i = 0; i < 20; i++) {
+        wineLeds[i] = CHSV(changingHue, 255, lowerBrightness);
+        compartmentLeds[i] = CHSV(changingHue, 255, upperBrightness);
+        rightGlassLeds[i] = CHSV(changingHue, 255, upperBrightness);
+        leftGlassLeds[i] = CHSV(changingHue, 255, upperBrightness);
+    }
+    EVERY_N_MILLISECONDS_I(timingObj2, 500) {
+        changingHue++;
+        timingObj2.setPeriod(map(masterSpeed, 0, 100, 1000, 3));
+    }
+}
+
+void singleScanning() {
+    EVERY_N_MILLISECONDS_I(timingObj, 200) {
+        if (staticColor) {
+            CHSV temp1 = hsv2rgb();
+            temp1.value = lowerBrightness;
+            wineLeds[testCount] = temp1;
+        } else {
+            wineLeds[testCount] = CHSV(changingHue, 255, lowerBrightness);
+        }
+
+        testCount++;
+        timingObj.setPeriod(map(masterSpeed, 0, 100, 1000, 50));
+    }
+
+    EVERY_N_MILLISECONDS(16) {
+        fadeToBlackBy(wineLeds, NUM_LEDS, map(masterSpeed, 0, 100, 2, 30));
+    }
+
+    if (testCount > 14) {
+        testCount = 0;
+        if (!staticColor) {
+            changingHue = random8();
+        }
+    }
+
+    solidColors(true);
+}
+
+
