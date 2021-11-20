@@ -34,3 +34,14 @@ void multiScanningStateMachine() {
         }
     }
 }
+
+
+void sinelon() {
+    fadeToBlackBy(wineLeds, 15, 20);
+    int pos = beatsin16(map(masterSpeed, 0, 100, 8, 25), 0, 4);
+    CHSV temp1 = hsv2rgb();
+    temp1.value = lowerBrightness;
+    wineLeds[pos] = temp1;
+    wineLeds[9 - pos] = temp1;
+    wineLeds[pos + 10] = temp1;
+}

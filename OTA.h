@@ -33,7 +33,7 @@ const char* loginIndex =
     "<table width='20%' bgcolor='A09F9F' align='center'>"
     "<tr>"
     "<td colspan=2>"
-    "<center><font size=4><b>ESP32 Login Page</b></font></center>"
+    "<center><font size=4><b>ESP32 Mini Bar Login Page</b></font></center>"
     "<br>"
     "</td>"
     "<br>"

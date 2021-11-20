@@ -11,11 +11,19 @@ void Task1code(void* pvParameters) {
             //brightness
             client.publish("minibarlights/brightnessState", String(brightness));
 
+            client.publish("minibarlights/barSignBrightnessState", String(originalBarSignBrightness));
+
             //On OFf State
             if (lightsOn) {
                 client.publish("minibarlights/OnOffState", "ON");
             } else {
                 client.publish("minibarlights/OnOffState", "OFF");
+            }
+
+            if (barSignOn) {
+                client.publish("minibarlights/barSignOnOffState", "ON");
+            } else {
+                client.publish("minibarlights/barSignOnOffState", "OFF");
             }
 
             //upper and lower brightness
@@ -112,6 +120,23 @@ void onConnectionEstablished() {
         lowerBrightness = 50;
         upperBrightness = 50;
         setAnimation("Solid White");
+    });
+
+    client.subscribe("minibarlights/barSignOnOff", [](const String& payload) {
+        TelnetStream.print("bar sign on off");
+        TelnetStream.println(payload);
+        if (payload == "ON") {
+            barSignOn = true;
+        } else {
+            barSignOn = false;
+        }
+    });
+
+    client.subscribe("minibarlights/barSignBrightness", [](const String& payload) {
+        TelnetStream.print("bar sign brightness");
+        TelnetStream.println(payload);
+        originalBarSignBrightness = payload.toInt();
+        barSignBrightness = map(payload.toInt(), 3, 255, 0, 1024);
     });
 }
 

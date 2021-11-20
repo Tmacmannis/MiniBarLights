@@ -12,11 +12,17 @@
 #define LED_TYPE WS2812B
 #define COLOR_ORDER GRB
 #define NUM_LEDS 20
+#define LED 25
 
 CRGB wineLeds[NUM_LEDS];
 CRGB compartmentLeds[NUM_LEDS];
 CRGB rightGlassLeds[NUM_LEDS];
 CRGB leftGlassLeds[NUM_LEDS];
+
+// setting PWM properties
+const int freq = 5000;
+const int ledChannel = 0;
+const int resolution = 10;  //Resolution 8, 10, 12, 15
 
 boolean lightsOn = true;
 int prevUpperBrightness = 0;
@@ -28,6 +34,10 @@ unsigned long mqttUpdateTime = 0;
 int currentState;
 int masterSpeed = 50;
 boolean staticColor = true;
+
+boolean barSignOn = true;
+int barSignBrightness = 1024;
+int originalBarSignBrightness;
 
 uint8_t changingHue = 0;
 
@@ -53,6 +63,11 @@ TaskHandle_t Task1;
 
 void setup() {
     setupOTA("MiniBarLights", mySSID, myPASSWORD);
+
+    pinMode(LED, OUTPUT);
+    ledcSetup(ledChannel, freq, resolution);
+    ledcAttachPin(LED, ledChannel);
+
     TelnetStream.begin();
 
     client.enableDebuggingMessages();                                           // Enable debugging messages sent to serial output
@@ -85,6 +100,27 @@ void loop() {
         ledStateMachine();
     }
     FastLED.show();
+
+    EVERY_N_MILLISECONDS(8) {
+        setBarSign();
+    }
+
+    // EVERY_N_MILLISECONDS(5000) {
+    //     if (barSignOn) {
+    //         ledcWrite(ledChannel, 0);
+    //     } else {
+    //         ledcWrite(ledChannel, 1024);
+    //     }
+    //     barSignOn = !barSignOn;
+    // }
+}
+
+void setBarSign() {
+    if (barSignOn) {
+        ledcWrite(ledChannel, barSignBrightness);
+    } else {
+        ledcWrite(ledChannel, 0);
+    }
 }
 
 void ledStateMachine() {
@@ -99,7 +135,7 @@ void ledStateMachine() {
             singleScanning();
             break;
         case 3:
-            multiScanning();
+            sinelon();
     }
 }
 
@@ -207,5 +243,3 @@ void singleScanning() {
 
     solidColors(true);
 }
-
-
