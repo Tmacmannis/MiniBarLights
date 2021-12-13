@@ -16,6 +16,9 @@ void Task1code(void* pvParameters) {
             //On OFf State
             if (lightsOn) {
                 client.publish("minibarlights/OnOffState", "ON");
+                client.publish("minibarlights/set_lower_brightness", String(lowerBrightness));
+                client.publish("minibarlights/set_upper_brightness", String(upperBrightness));
+                client.publish("minibarlights/effectState", getCurrentEffectState());
             } else {
                 client.publish("minibarlights/OnOffState", "OFF");
             }
@@ -24,14 +27,7 @@ void Task1code(void* pvParameters) {
                 client.publish("minibarlights/barSignOnOffState", "ON");
             } else {
                 client.publish("minibarlights/barSignOnOffState", "OFF");
-            }
-
-            //upper and lower brightness
-            client.publish("minibarlights/set_lower_brightness", String(lowerBrightness));
-            client.publish("minibarlights/set_upper_brightness", String(upperBrightness));
-
-            //current effect state
-            client.publish("minibarlights/effectState", getCurrentEffectState());
+            }            
         }
     }
 }
