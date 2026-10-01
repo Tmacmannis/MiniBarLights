@@ -1,1 +1,8 @@
 *.bin
+debug_custom.json
+.gitignore
+debug.cfg
+esp32.svd
+build/esp32.esp32.node32s/MiniBarLights.ino.elf
+.gitignore
+build/esp32.esp32.node32s/MiniBarLights.ino.map

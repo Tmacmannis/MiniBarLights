@@ -1,3 +1,10 @@
+#ifdef ssid
+#undef ssid
+#endif
+#ifdef password
+#undef password
+#endif
+
 #ifdef ESP32
 #else
 #include <ESP8266WiFi.h>
@@ -60,7 +67,7 @@ const char* loginIndex =
     "{"
     "if(form.userid.value=='admin' && form.pwd.value=='admin')"
     "{"
-    "window.open('/serverIndex')"
+    "window.location.href = '/serverIndex';"
     "}"
     "else"
     "{"
@@ -114,11 +121,14 @@ const char* serverIndex =
  * setup function
  */
 
-void setupOTA(const char* nameprefix, const char* ssid, const char* password) {
+void setupOTA(const char* nameprefix, const char* wifiSsid, const char* wifiPassword) {
     Serial.begin(115200);
 
+    WiFi.mode(WIFI_STA);
+    WiFi.setHostname(nameprefix);
+
     // Connect to WiFi network
-    WiFi.begin(ssid, password);
+    WiFi.begin(wifiSsid, wifiPassword);
     Serial.println("");
 
     // Wait for connection
@@ -128,18 +138,17 @@ void setupOTA(const char* nameprefix, const char* ssid, const char* password) {
     }
     Serial.println("");
     Serial.print("Connected to ");
-    Serial.println(ssid);
+    Serial.println(wifiSsid);
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
 
     /*use mdns for host name resolution*/
-    if (!MDNS.begin("Barbot")) {  //http://esp32.local
+    if (!MDNS.begin(nameprefix)) {
         Serial.println("Error setting up MDNS responder!");
-        while (1) {
-            delay(1000);
-        }
+    } else {
+        MDNS.addService("http", "tcp", 80);
+        Serial.printf("mDNS responder started: http://%s.local\n", nameprefix);
     }
-    Serial.println("mDNS responder started");
     /*return index page which is stored in serverIndex */
     server.on("/", HTTP_GET, []() {
         server.sendHeader("Connection", "close");

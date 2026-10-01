@@ -44,4 +44,25 @@ void sinelon() {
     wineLeds[pos] = temp1;
     wineLeds[9 - pos] = temp1;
     wineLeds[pos + 10] = temp1;
+    solidColors(true);
+}
+
+void rainbow() {
+    static uint8_t starthue = 0;
+    fill_rainbow(wineLeds, NUM_LEDS, starthue, 7);
+    fill_rainbow(compartmentLeds, NUM_LEDS, starthue, 7);
+    fill_rainbow(rightGlassLeds, NUM_LEDS, starthue, 7);
+    fill_rainbow(leftGlassLeds, NUM_LEDS, starthue, 7);
+
+    for (int i = 0; i < NUM_LEDS; i++) {
+        wineLeds[i].nscale8_video(lowerBrightness);
+        compartmentLeds[i].nscale8_video(upperBrightness);
+        rightGlassLeds[i].nscale8_video(upperBrightness);
+        leftGlassLeds[i].nscale8_video(upperBrightness);
+    }
+
+    EVERY_N_MILLISECONDS_I(timingRainbow, 20) {
+        starthue++;
+        timingRainbow.setPeriod(map(masterSpeed, 0, 100, 80, 5));
+    }
 }

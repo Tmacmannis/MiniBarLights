@@ -1,8 +1,31 @@
+#define FASTLED_ALLOW_INTERRUPTS 0
 #include <FastLED.h>
+#include <esp_arduino_version.h>
 #include <credentials.h>
+
+#ifdef ssid
+#undef ssid
+#endif
+#ifdef password
+#undef password
+#endif
 
 #include "EspMQTTClient.h"
 #include "OTA.h"
+
+// Forward declarations
+void multiScanning();
+void rainbow();
+void sinelon();
+CHSV hsv2rgb();
+void setBarSign();
+void Task1code(void* pvParameters);
+void sendHomeAssistantDiscovery();
+void publishAllStates();
+String getCurrentEffectState();
+void solidColors(boolean upperOnly);
+void slowChange();
+void singleScanning();
 
 #define DATA_PIN1 12
 #define DATA_PIN2 16
@@ -24,30 +47,30 @@ const int freq = 5000;
 const int ledChannel = 0;
 const int resolution = 10;  //Resolution 8, 10, 12, 15
 
-boolean lightsOn = true;
-int prevUpperBrightness = 0;
-int prevLowerBrightness = 0;
+volatile boolean lightsOn = true;
+int prevUpperBrightness = 100;
+int prevLowerBrightness = 100;
 int brightness = 25;
-int upperBrightness = 100;
-int lowerBrightness = 100;
+volatile int upperBrightness = 100;
+volatile int lowerBrightness = 100;
 unsigned long mqttUpdateTime = 0;
-int currentState;
-int masterSpeed = 50;
-boolean staticColor = true;
+volatile int currentState = 0;
+volatile int masterSpeed = 50;
+volatile boolean staticColor = true;
 
-boolean barSignOn = true;
-int barSignBrightness = 1024;
-int originalBarSignBrightness;
+volatile boolean barSignOn = true;
+volatile int barSignBrightness = 1024;
+int originalBarSignBrightness = 255;
 
 uint8_t changingHue = 0;
 
 boolean colorTranslated = false;
 
-int red;
-int green;
-int blue;
+volatile int red = 255;
+volatile int green = 255;
+volatile int blue = 255;
 
-int testCount;
+int testCount = 0;
 
 EspMQTTClient client(
     mySSID,
@@ -65,15 +88,19 @@ void setup() {
     setupOTA("MiniBarLights", mySSID, myPASSWORD);
 
     pinMode(LED, OUTPUT);
+#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+    ledcAttach(LED, freq, resolution);
+#else
     ledcSetup(ledChannel, freq, resolution);
     ledcAttachPin(LED, ledChannel);
+#endif
+    setBarSign();
 
     TelnetStream.begin();
 
-    client.enableDebuggingMessages();                                           // Enable debugging messages sent to serial output
-    client.enableHTTPWebUpdater();                                              // Enable the web updater. User and password default to values of MQTTUsername and MQTTPassword. These can be overrited with enableHTTPWebUpdater("user", "password").
-    client.enableLastWillMessage("TestClient/lastwill", "I am going offline");  // You can activate the retain flag by setting the third parameter to true
+    client.setMaxPacketSize(1024);
     client.enableDebuggingMessages(true);
+    client.enableLastWillMessage("minibarlights/status", "offline", true);
 
     xTaskCreatePinnedToCore(
         Task1code, /* Task function. */
@@ -94,48 +121,55 @@ void setup() {
 }
 
 void loop() {
-    handleClientTest();
-
-    EVERY_N_MILLISECONDS(8) {
-        ledStateMachine();
+    if (lightsOn) {
+        EVERY_N_MILLISECONDS(15) {
+            ledStateMachine();
+        }
+        EVERY_N_MILLISECONDS(20) {
+            FastLED.show();
+        }
+    } else {
+        delay(10);
     }
-    FastLED.show();
 
-    EVERY_N_MILLISECONDS(8) {
+    EVERY_N_MILLISECONDS(50) {
         setBarSign();
     }
-
-    // EVERY_N_MILLISECONDS(5000) {
-    //     if (barSignOn) {
-    //         ledcWrite(ledChannel, 0);
-    //     } else {
-    //         ledcWrite(ledChannel, 1024);
-    //     }
-    //     barSignOn = !barSignOn;
-    // }
 }
 
 void setBarSign() {
-    if (barSignOn) {
-        ledcWrite(ledChannel, barSignBrightness);
-    } else {
-        ledcWrite(ledChannel, 0);
+    static int lastSignOutput = -1;
+    int target = barSignOn ? barSignBrightness : 0;
+    if (target != lastSignOutput) {
+#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+        ledcWrite(LED, target);
+#else
+        ledcWrite(ledChannel, target);
+#endif
+        lastSignOutput = target;
     }
 }
 
 void ledStateMachine() {
     switch (currentState) {
-        case 0:  //solid white
+        case 0:  // Solid White / Color
             solidColors(false);
             break;
-        case 1:  //Slow Change
+        case 1:  // Slow Change
             slowChange();
             break;
-        case 2:  //Test Pattern
+        case 2:  // Test Pattern / Scanning
             singleScanning();
             break;
-        case 3:
+        case 3:  // Breathing Multi Color / Sinelon
             sinelon();
+            break;
+        case 4:  // Scanner
+            multiScanning();
+            break;
+        case 5:  // Rainbow
+            rainbow();
+            break;
     }
 }
 
@@ -177,28 +211,23 @@ String getCurrentEffectState() {
             return "Scanner";
         case 5:
             return "Rainbow";
+        default:
+            return "Solid White";
     }
 }
 
-CHSV rgb2hsv() {
-    CRGB color1temp;
-    color1temp.r = red;
-    color1temp.g = green;
-    color1temp.b = blue;
-    CHSV temp1 = rgb2hsv_approximate(color1temp);
-    return temp1;
-}
-
 void solidColors(boolean upperOnly) {
-    for (int i = 0; i < 20; i++) {
-        CHSV temp1 = hsv2rgb();
-        temp1.value = upperBrightness;
-        compartmentLeds[i] = temp1;
-        rightGlassLeds[i] = temp1;
-        leftGlassLeds[i] = temp1;
+    CHSV upperColor = hsv2rgb();
+    upperColor.value = upperBrightness;
+    CHSV lowerColor = upperColor;
+    lowerColor.value = lowerBrightness;
+
+    for (int i = 0; i < NUM_LEDS; i++) {
+        compartmentLeds[i] = upperColor;
+        rightGlassLeds[i] = upperColor;
+        leftGlassLeds[i] = upperColor;
         if (!upperOnly) {
-            temp1.value = lowerBrightness;
-            wineLeds[i] = temp1;
+            wineLeds[i] = lowerColor;
         }
     }
 }
